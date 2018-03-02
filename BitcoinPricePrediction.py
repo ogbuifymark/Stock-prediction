@@ -180,3 +180,75 @@ ax2.set_ylabel('Ethereum Price ($)',fontsize=12)
 ax1.legend(bbox_to_anchor=(0.1, 1), loc=2, borderaxespad=0., prop={'size': 14})
 plt.tight_layout()
 plt.show()
+
+#get our random walk model to predict the closing prices over the total test set.
+bt_random_walk = []
+eth_random_walk = []
+for n_step, (bt_step, eth_step) in enumerate(zip(bt_random_steps, eth_random_steps)):
+    if n_step==0:
+        bt_random_walk.append(market_info[market_info['Date']< split_date]['bt_Close'].values[0] * (bt_step+1))
+        eth_random_walk.append(market_info[market_info['Date']< split_date]['eth_Close'].values[0] * (eth_step+1))
+    else:
+        bt_random_walk.append(bt_random_walk[n_step-1] * (bt_step+1))
+        eth_random_walk.append(eth_random_walk[n_step-1] * (eth_step+1))
+fig, (ax1, ax2) = plt.subplots(2, 1)
+ax1.set_xticks([datetime.date(2017,i+1,1) for i in range(12)])
+ax1.set_xticklabels('')
+ax2.set_xticks([datetime.date(2017,i+1,1) for i in range(12)])
+ax2.set_xticklabels([datetime.date(2017,i+1,1).strftime('%b %d %Y')  for i in range(12)])
+ax1.plot(market_info[market_info['Date']>= split_date]['Date'].astype(datetime.datetime),
+         market_info[market_info['Date']>= split_date]['bt_Close'].values, label='Actual')
+ax1.plot(market_info[market_info['Date']>= split_date]['Date'].astype(datetime.datetime),
+         bt_random_walk[::-1], label='Predicted')
+ax2.plot(market_info[market_info['Date']>= split_date]['Date'].astype(datetime.datetime),
+         market_info[market_info['Date']>= split_date]['eth_Close'].values, label='Actual')
+ax2.plot(market_info[market_info['Date']>= split_date]['Date'].astype(datetime.datetime),
+         eth_random_walk[::-1], label='Predicted')
+
+ax1.set_title('Full Interval Random Walk')
+ax1.set_ylabel('Bitcoin Price ($)',fontsize=12)
+ax2.set_ylabel('Ethereum Price ($)',fontsize=12)
+ax1.legend(bbox_to_anchor=(0.1, 1), loc=2, borderaxespad=0., prop={'size': 14})
+plt.tight_layout()
+plt.show()
+from ipywidgets import interact, interactive, fixed, interact_manual
+import ipywidgets as widgets
+
+def plot_func(freq):
+    np.random.seed(freq)
+    random_steps = np.random.normal(eth_walk_mean, eth_r_walk_sd,
+                (max(market_info['Date']).to_pydatetime() - datetime.datetime.strptime(split_date, '%Y-%m-%d')).days + 1)
+    random_walk = []
+    for n_step,i in enumerate(random_steps):
+        if n_step==0:
+            random_walk.append(market_info[market_info['Date']< split_date]['eth_Close'].values[0] * (i+1))
+        else:
+            random_walk.append(random_walk[n_step-1] * (i+1))
+    fig, (ax1, ax2) = plt.subplots(2,1)
+    ax1.set_xticks([datetime.date(2017,i+1,1) for i in range(12)])
+    ax1.set_xticklabels('')
+    ax2.set_xticks([datetime.date(2017,i+1,1) for i in range(12)])
+    ax2.set_xticklabels([datetime.date(2017,i+1,1).strftime('%b %d %Y')  for i in range(12)])
+    ax1.plot(market_info[market_info['Date']>= split_date]['Date'].astype(datetime.datetime),
+         market_info[market_info['Date']>= split_date]['eth_Close'].values, label='Actual')
+    ax1.plot(market_info[market_info['Date']>= split_date]['Date'].astype(datetime.datetime),
+          market_info[(market_info['Date']+ datetime.timedelta(days=1))>= split_date]['eth_Close'].values[1:] *
+         (1+random_steps), label='Predicted')
+    ax2.plot(market_info[market_info['Date']>= split_date]['Date'].astype(datetime.datetime),
+          market_info[(market_info['Date']+ datetime.timedelta(days=1))>= split_date]['eth_Close'].values[1:] *
+         (1+random_steps))
+    ax2.plot(market_info[market_info['Date']>= split_date]['Date'].astype(datetime.datetime),
+             random_walk[::-1])
+    ax1.set_title('Single Point Random Walk')
+    ax1.set_ylabel('')
+    # for static figures, you may wish to insert the random seed value
+#    ax1.annotate('Random Seed: %d'%freq, xy=(0.75, 0.2),  xycoords='axes fraction',
+#            xytext=(0.75, 0.2), textcoords='axes fraction')
+    ax1.legend(bbox_to_anchor=(0.1, 1), loc=2, borderaxespad=0., prop={'size': 14})
+    ax2.set_title('Full Interval Random Walk')
+    fig.text(0.0, 0.5, 'Ethereum Price ($)', va='center', rotation='vertical',fontsize=12)
+    plt.tight_layout()
+#    plt.savefig('image%d.png'%freq, bbox_inches='tight')
+    plt.show()
+
+interact(plot_func, freq =widgets.IntSlider(min=200,max=210,step=1,value=205, description='Random Seed:'))
